@@ -5,7 +5,6 @@ import 'ProfileCard.dart';
 import 'addPet.dart';
 import 'PetDetails.dart';
 
-
 class Listitems extends StatefulWidget {
   const Listitems({super.key});
 
@@ -62,6 +61,38 @@ class _ListitemsState extends State<Listitems> {
                 ),
               );
             },
+            onLongPress: () async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Delete Pet'),
+                  content: const Text('Are you sure you want to delete this pet?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(false),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(true),
+                      child: const Text(
+                        'Delete',
+                        style: TextStyle(color: Colors.red),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+
+              if (confirm == true) {
+                setState(() {
+                  profiles.remove(profile);
+                });
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('${profile.name} has been deleted')),
+                );
+              }
+            },
             child: Itemcard(profiles: profile),
           );
         }).toList(),
@@ -85,5 +116,3 @@ class _ListitemsState extends State<Listitems> {
     );
   }
 }
-
-

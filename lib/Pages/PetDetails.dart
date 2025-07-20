@@ -72,29 +72,6 @@ class _PetDetailsState extends State<PetDetails> {
     });
   }
 
-  void _confirmDeletePet() {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Delete Pet"),
-        content: const Text("Are you sure you want to delete this pet?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context); // close dialog
-              Navigator.pop(context, 'delete'); // return to list with signal to delete
-            },
-            child: const Text("Delete", style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final profile = widget.profile;
@@ -106,13 +83,6 @@ class _PetDetailsState extends State<PetDetails> {
       appBar: AppBar(
         title: Text("${profile.name}'s Profile"),
         backgroundColor: Colors.pink[200],
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.delete),
-            tooltip: "Delete Pet",
-            onPressed: _confirmDeletePet,
-          )
-        ],
       ),
       backgroundColor: Colors.pink[50],
       body: SingleChildScrollView(
@@ -227,8 +197,31 @@ class _PetDetailsState extends State<PetDetails> {
           child: logs.isEmpty
               ? const Text("No records yet.")
               : Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: logs.map((log) => Text("- ${formatFullDateTime(log)}")).toList(),
+            children: logs.asMap().entries.map((entry) {
+              int index = entry.key;
+              DateTime log = entry.value;
+              return Dismissible(
+                key: UniqueKey(),
+                direction: DismissDirection.endToStart,
+                onDismissed: (_) {
+                  setState(() {
+                    logs.removeAt(index);
+                  });
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("$title log deleted")),
+                  );
+                },
+                background: Container(
+                  color: Colors.red,
+                  alignment: Alignment.centerRight,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: const Icon(Icons.delete, color: Colors.white),
+                ),
+                child: ListTile(
+                  title: Text("- ${formatFullDateTime(log)}"),
+                ),
+              );
+            }).toList(),
           ),
         ),
         const SizedBox(height: 16),

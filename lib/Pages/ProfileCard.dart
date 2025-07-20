@@ -27,6 +27,7 @@ class Itemcard extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             profiles.photoPath != null && File(profiles.photoPath!).existsSync()
                 ? CircleAvatar(
