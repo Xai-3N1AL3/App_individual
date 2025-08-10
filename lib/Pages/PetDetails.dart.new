@@ -1,0 +1,351 @@
+import 'package:flutter/material.dart';
+import 'dart:io';
+import 'package:pet_care/models/pet.dart';
+import 'package:intl/intl.dart';
+
+// Helper class to represent a log entry
+class PetLog {
+  final DateTime time;
+  final IconData icon;
+  final Color color;
+  final String label;
+  final String type;
+
+  PetLog({
+    required this.time,
+    required this.icon,
+    required this.color,
+    required this.label,
+    required this.type,
+  });
+}
+
+class PetDetails extends StatefulWidget {
+  final Pet pet;
+
+  const PetDetails({super.key, required this.pet});
+
+  @override
+  State<PetDetails> createState() => _PetDetailsState();
+}
+
+class _PetDetailsState extends State<PetDetails> {
+  final List<DateTime> _feedingLogs = [];
+  final List<DateTime> _bathLogs = [];
+  final TextEditingController _noteController = TextEditingController();
+  
+  // Initialize notes list with some sample data
+  final List<Map<String, dynamic>> _notes = [
+    {
+      'text': 'First note',
+      'date': DateTime.now().subtract(const Duration(hours: 2)),
+      'done': false,
+    },
+    {
+      'text': 'Completed task',
+      'date': DateTime.now().subtract(const Duration(hours: 1)),
+      'done': true,
+    },
+  ];
+  
+  @override
+  void initState() {
+    super.initState();
+    // Load some sample data for demonstration
+    _feedingLogs.addAll([
+      DateTime.now().subtract(const Duration(hours: 2)),
+      DateTime.now().subtract(const Duration(days: 1, hours: 3)),
+    ]);
+    _bathLogs.add(DateTime.now().subtract(const Duration(days: 2)));
+  }
+
+  @override
+  void dispose() {
+    _noteController.dispose();
+    super.dispose();
+  }
+  
+  // Format date and time for display
+  String _formatFullDateTime(DateTime date) {
+    return DateFormat('MMM d, y • h:mm a').format(date);
+  }
+  
+  // Delete a note
+  void _deleteNote(int index) {
+    final deletedNote = _notes[index];
+    
+    setState(() {
+      _notes.removeAt(index);
+    });
+    
+    // Show undo option
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Note deleted'),
+          action: SnackBarAction(
+            label: 'UNDO',
+            textColor: Colors.pinkAccent,
+            onPressed: () {
+              if (mounted) {
+                setState(() {
+                  _notes.insert(index, deletedNote);
+                });
+              }
+            },
+          ),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
+  // Add a new note
+  void _addNote() {
+    final text = _noteController.text.trim();
+    if (text.isNotEmpty) {
+      setState(() {
+        _notes.insert(0, {
+          'text': text,
+          'date': DateTime.now(),
+          'done': false,
+        });
+        _noteController.clear();
+      });
+      
+      // Hide keyboard
+      FocusScope.of(context).unfocus();
+      
+      // Show confirmation
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Note added'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
+  // Toggle note done/undone
+  void _toggleNoteDone(int index) {
+    if (mounted) {
+      setState(() {
+        _notes[index]['done'] = !(_notes[index]['done'] as bool);
+      });
+    }
+  }
+
+  // Build the note input field
+  Widget _buildNoteInputField() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _noteController,
+              decoration: InputDecoration(
+                hintText: 'Add a note...',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(20.0),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16.0,
+                  vertical: 12.0,
+                ),
+              ),
+              onSubmitted: (_) => _addNote(),
+            ),
+          ),
+          const SizedBox(width: 8.0),
+          FloatingActionButton(
+            onPressed: _addNote,
+            mini: true,
+            backgroundColor: Colors.pinkAccent,
+            child: const Icon(Icons.send, color: Colors.white),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Build the empty notes state
+  Widget _buildEmptyNotesState() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        children: [
+          Icon(
+            Icons.notes,
+            size: 48,
+            color: Colors.grey[300],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'No notes yet. Add your first note above!',
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Build the list of notes
+  Widget _buildNotesListView() {
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: _notes.length,
+      itemBuilder: (context, index) {
+        return _buildNoteItem(_notes[index], index);
+      },
+    );
+  }
+
+  // Build a single note item
+  Widget _buildNoteItem(Map<String, dynamic> note, int index) {
+    final text = note['text'] as String;
+    final date = note['date'] as DateTime;
+    final isDone = note['done'] as bool;
+    
+    return Dismissible(
+      key: ValueKey('${note['date']}_${note['text']}'),
+      direction: DismissDirection.endToStart,
+      onDismissed: (_) => _deleteNote(index),
+      background: Container(
+        margin: const EdgeInsets.symmetric(vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.red,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        child: const Icon(Icons.delete, color: Colors.white),
+      ),
+      child: Card(
+        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+        elevation: 1,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: CheckboxListTile(
+          title: Text(
+            text,
+            style: TextStyle(
+              decoration: isDone ? TextDecoration.lineThrough : null,
+              color: isDone ? Colors.grey : null,
+            ),
+          ),
+          subtitle: Text(
+            _formatFullDateTime(date),
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
+            ),
+          ),
+          value: isDone,
+          onChanged: (_) => _toggleNoteDone(index),
+          controlAffinity: ListTileControlAffinity.leading,
+          activeColor: Colors.pinkAccent,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+        ),
+      ),
+    );
+  }
+
+  // Build the notes list widget
+  Widget _buildNotesList() {
+    return Column(
+      children: [
+        _buildNoteInputField(),
+        const SizedBox(height: 16),
+        _notes.isEmpty ? _buildEmptyNotesState() : _buildNotesListView(),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.pet.name ?? 'Pet Details'),
+        backgroundColor: Colors.pinkAccent,
+        foregroundColor: Colors.white,
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Pet image and basic info
+            Container(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 50,
+                    backgroundImage: widget.pet.imagePath != null
+                        ? FileImage(File(widget.pet.imagePath!)) as ImageProvider
+                        : const AssetImage('assets/default_pet.png'),
+                  ),
+                  const SizedBox(width: 16.0),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.pet.name ?? 'No Name',
+                        style: const TextStyle(
+                          fontSize: 24.0,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4.0),
+                      Text(
+                        '${widget.pet.species ?? 'Unknown'} • ${widget.pet.breed ?? 'Unknown'}',
+                        style: TextStyle(
+                          fontSize: 16.0,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      const SizedBox(height: 4.0),
+                      Text(
+                        'Born: ${widget.pet.birthDate ?? 'Unknown'}',
+                        style: TextStyle(
+                          fontSize: 14.0,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            
+            // Notes section
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Notes',
+                    style: TextStyle(
+                      fontSize: 20.0,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8.0),
+                  _buildNotesList(),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
